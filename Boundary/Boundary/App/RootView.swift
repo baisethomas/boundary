@@ -79,11 +79,13 @@ struct RootView: View {
 
     @MainActor
     private func runForegroundEvaluation() async {
+        appState.syncConfiguration(configuration)
         let persisted = (try? rulesStore.persistedRules()) ?? []
         await services.evaluationCoordinator.evaluateForeground(
             rules: persisted,
             appState: appState,
-            configuration: configuration
+            configuration: configuration,
+            activityStore: activityStore
         )
     }
 }

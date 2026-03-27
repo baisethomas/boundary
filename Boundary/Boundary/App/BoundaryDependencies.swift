@@ -25,12 +25,19 @@ final class BoundaryDependencies {
         activityStore = ActivityStore()
 
         let engine = RuleEngine()
-        let coordinator = EvaluationCoordinator(ruleEngine: engine, calendarService: calendar)
+        let automation = AutomationService()
+        let activityLogger = ActivityLogger()
+        let coordinator = EvaluationCoordinator(
+            ruleEngine: engine,
+            calendarService: calendar,
+            automationService: automation,
+            activityLogger: activityLogger
+        )
         services = ServiceContainer(
             calendarService: calendar,
             ruleEngine: engine,
-            automationService: AutomationService(),
-            activityLogger: ActivityLogger(),
+            automationService: automation,
+            activityLogger: activityLogger,
             permissionsManager: permissions,
             persistence: SwiftDataPersistenceService.shared,
             evaluationCoordinator: coordinator

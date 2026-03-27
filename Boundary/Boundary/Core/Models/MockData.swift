@@ -66,6 +66,8 @@ enum MockData {
     static let sampleActivityItems: [ActivityItem] = [
         ActivityItem(type: .activated, ruleID: sampleRuleAfterHours.id, title: "Boundary on", detail: "Schedule matched"),
         ActivityItem(type: .ended, ruleID: sampleRuleAfterHours.id, title: "Boundary off", detail: "Window ended"),
+        ActivityItem(type: .paused, title: "Boundary paused", detail: "Rules on hold"),
+        ActivityItem(type: .resumed, title: "Boundary resumed", detail: "Evaluating again"),
         ActivityItem(type: .override, title: "Manual override", detail: "User resumed notifications"),
         ActivityItem(type: .skipped, title: "Evaluation skipped", detail: "Calendar permission denied"),
     ]

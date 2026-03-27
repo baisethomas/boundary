@@ -171,14 +171,7 @@ struct HomeView: View {
         guard let config = configuration else { return }
         config.isPaused = paused
         try? modelContext.save()
-        Task {
-            let rules = (try? rulesStore.persistedRules()) ?? []
-            await viewModel.runForegroundEvaluation(
-                appState: appState,
-                configuration: config,
-                rules: rules
-            )
-        }
+        appState.syncConfiguration(config)
     }
 
     private func runTestEvaluation() {
@@ -187,7 +180,9 @@ struct HomeView: View {
             await viewModel.runForegroundEvaluation(
                 appState: appState,
                 configuration: configuration,
-                rules: rules
+                rules: rules,
+                activityStore: activityStore,
+                trigger: .manual
             )
             await viewModel.showToast("Boundary refreshed")
         }

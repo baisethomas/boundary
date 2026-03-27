@@ -9,6 +9,8 @@ import SwiftUI
 struct RuleBuilderView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(RulesStore.self) private var rulesStore
+    @Environment(ActivityStore.self) private var activityStore
+    @Environment(ServiceContainer.self) private var services
 
     @Bindable var viewModel: RuleBuilderViewModel
 
@@ -182,7 +184,15 @@ struct RuleBuilderView: View {
 
     private func saveAndDismiss() {
         do {
+            let title = viewModel.ruleName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let editingId = viewModel.editingRuleId
             try viewModel.save(using: rulesStore)
+            services.activityLogger.logRuleSavedFromBuilder(
+                title: title,
+                isEditing: editingId != nil,
+                ruleId: editingId,
+                store: activityStore
+            )
             dismiss()
         } catch {
             viewModel.saveError = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
@@ -204,6 +214,11 @@ private struct RuleBuilderPreviewHost: View {
     var body: some View {
         RuleBuilderView(viewModel: RuleBuilderViewModel())
             .environment(deps.rulesStore)
-            .task { deps.rulesStore.bind(modelContext) }
+            .environment(deps.activityStore)
+            .environment(deps.services)
+            .task {
+                deps.rulesStore.bind(modelContext)
+                deps.activityStore.bind(modelContext)
+            }
     }
 }

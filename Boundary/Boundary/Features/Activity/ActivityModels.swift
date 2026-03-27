@@ -36,7 +36,7 @@ enum ActivityFilter: String, CaseIterable, Identifiable, Sendable {
         case .skipped:
             return type == .skipped
         case .overrides:
-            return type == .override
+            return type == .override || type == .paused || type == .resumed
         }
     }
 }
@@ -49,6 +49,8 @@ extension ActivityType {
         case .ended: "Ended"
         case .skipped: "Skipped"
         case .override: "Override"
+        case .paused: "Paused"
+        case .resumed: "Resumed"
         }
     }
 
@@ -58,6 +60,8 @@ extension ActivityType {
         case .ended: "sun.max.fill"
         case .skipped: "arrow.right.circle"
         case .override: "hand.raised.fill"
+        case .paused: "pause.circle.fill"
+        case .resumed: "play.circle.fill"
         }
     }
 }

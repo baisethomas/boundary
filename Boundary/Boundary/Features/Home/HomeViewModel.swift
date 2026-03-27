@@ -30,14 +30,18 @@ final class HomeViewModel {
     func runForegroundEvaluation(
         appState: AppState,
         configuration: AppConfiguration?,
-        rules: [PersistedRule]
+        rules: [PersistedRule],
+        activityStore: ActivityStore,
+        trigger: EvaluationTrigger = .automatic
     ) async {
         isRefreshing = true
         defer { isRefreshing = false }
         await evaluationCoordinator.evaluateForeground(
             rules: rules,
             appState: appState,
-            configuration: configuration
+            configuration: configuration,
+            activityStore: activityStore,
+            trigger: trigger
         )
     }
 

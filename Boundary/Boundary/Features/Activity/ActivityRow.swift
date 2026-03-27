@@ -66,6 +66,8 @@ struct ActivityRow: View {
         case .ended: .idle
         case .skipped: .pending
         case .override: .pending
+        case .paused: .pending
+        case .resumed: .idle
         }
     }
 
@@ -79,6 +81,10 @@ struct ActivityRow: View {
             return Color.orange.opacity(colorScheme == .dark ? 0.85 : 0.75)
         case .override:
             return Color.accentColor
+        case .paused:
+            return Color.secondary.opacity(0.65)
+        case .resumed:
+            return BoundaryTheme.Colors.statusEmphasis(colorScheme)
         }
     }
 }

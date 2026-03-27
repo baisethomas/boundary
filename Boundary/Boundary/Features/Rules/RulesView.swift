@@ -9,6 +9,8 @@ import SwiftUI
 struct RulesView: View {
     @Environment(RulesStore.self) private var rulesStore
     @Environment(AppState.self) private var appState
+    @Environment(ActivityStore.self) private var activityStore
+    @Environment(ServiceContainer.self) private var services
 
     @Bindable var viewModel: RulesViewModel
 
@@ -69,6 +71,12 @@ struct RulesView: View {
                                 runStateLine: { viewModel.runStateLine(for: $0, appState: appState) },
                                 onToggleEnabled: { rule, isOn in
                                     try? rulesStore.setEnabled(ruleId: rule.id, isEnabled: isOn)
+                                    services.activityLogger.logRuleToggled(
+                                        name: rule.name,
+                                        ruleId: rule.id,
+                                        enabled: isOn,
+                                        store: activityStore
+                                    )
                                 },
                                 onEdit: { rule in
                                     presentBuilder(editing: rule)
@@ -150,5 +158,7 @@ struct RulesView: View {
     RulesView(viewModel: RulesViewModel(ruleEngine: deps.services.ruleEngine))
         .environment(deps.rulesStore)
         .environment(deps.appState)
+        .environment(deps.activityStore)
+        .environment(deps.services)
         .modelContainer(for: [PersistedRule.self, AppConfiguration.self], inMemory: true)
 }
