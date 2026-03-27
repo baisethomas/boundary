@@ -11,15 +11,15 @@ struct FormSectionCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: BoundaryTheme.Spacing.sm) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(BoundaryTheme.Typography.caption)
                 .foregroundStyle(.secondary)
             VStack(spacing: 0) {
                 content()
             }
-            .clipShape(RoundedRectangle(cornerRadius: BoundaryTheme.cornerRadius, style: .continuous))
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: BoundaryTheme.cornerRadius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: BoundaryTheme.Radius.card, style: .continuous))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: BoundaryTheme.Radius.card, style: .continuous))
         }
     }
 }

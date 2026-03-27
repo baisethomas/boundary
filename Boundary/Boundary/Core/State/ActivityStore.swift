@@ -2,7 +2,7 @@
 //  ActivityStore.swift
 //  Boundary
 //
-//  PRD Section 6 — activity log facade.
+//  Activity history for UI; mock items until SwiftData hydrates.
 //
 
 import SwiftData
@@ -13,8 +13,13 @@ import SwiftUI
 final class ActivityStore {
     private var modelContext: ModelContext?
 
+    private(set) var activities: [ActivityItem] = MockData.sampleActivityItems
+
+    var isPersistenceBound: Bool { modelContext != nil }
+
     func bind(_ context: ModelContext) {
         modelContext = context
+        try? refreshFromPersistence()
     }
 
     private func requireContext() -> ModelContext {
@@ -24,20 +29,24 @@ final class ActivityStore {
         return modelContext
     }
 
+    func refreshFromPersistence() throws {
+        guard modelContext != nil else { return }
+        let context = requireContext()
+        var descriptor = FetchDescriptor<ActivityEvent>(sortBy: [SortDescriptor(\.occurredAt, order: .reverse)])
+        let rows = try context.fetch(descriptor)
+        activities = rows.map(\.activityItem)
+    }
+
     func append(
         title: String,
         detail: String,
-        kind: ActivityKind,
+        activityType: ActivityType,
         ruleID: UUID? = nil,
         at date: Date = .now
     ) throws {
         let context = requireContext()
-        context.insert(ActivityEvent(title: title, detail: detail, occurredAt: date, kind: kind, ruleID: ruleID))
+        context.insert(ActivityEvent(title: title, detail: detail, occurredAt: date, activityType: activityType, ruleID: ruleID))
         try context.save()
-    }
-
-    func fetchAll() throws -> [ActivityEvent] {
-        var descriptor = FetchDescriptor<ActivityEvent>(sortBy: [SortDescriptor(\.occurredAt, order: .reverse)])
-        return try requireContext().fetch(descriptor)
+        try refreshFromPersistence()
     }
 }

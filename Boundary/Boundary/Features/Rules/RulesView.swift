@@ -8,86 +8,147 @@ import SwiftUI
 
 struct RulesView: View {
     @Environment(RulesStore.self) private var rulesStore
-    @Query(filter: #Predicate<AppConfiguration> { $0.id == "app.configuration.singleton" })
-    private var configurations: [AppConfiguration]
+    @Environment(AppState.self) private var appState
 
-    @Query(sort: \PersistedRule.createdAt, order: .reverse) private var rules: [PersistedRule]
     @Bindable var viewModel: RulesViewModel
 
-    private var isPaused: Bool {
-        configurations.first?.isPaused ?? false
-    }
+    @State private var rulePendingDelete: BoundaryRule?
+    @State private var showRuleBuilder = false
+    @State private var ruleBeingEdited: BoundaryRule?
 
     private var canAddRule: Bool {
         (try? rulesStore.canAddRule()) ?? false
     }
 
+    private var enabledRules: [BoundaryRule] {
+        rulesStore.rules.filter(\.isEnabled).sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var disabledRules: [BoundaryRule] {
+        rulesStore.rules.filter { !$0.isEnabled }.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var persisted: [PersistedRule] {
+        (try? rulesStore.persistedRules()) ?? []
+    }
+
+    private var showsEntitlementHint: Bool {
+        Entitlements.maxRulesForCurrentTier != nil
+    }
+
     var body: some View {
         NavigationStack {
             Group {
-                if rules.isEmpty {
-                    ContentUnavailableView(
-                        "No rules yet",
-                        systemImage: "slider.horizontal.3",
-                        description: Text("Add a sample rule to see the list. Rule builder UI comes next.")
-                    )
-                } else {
-                    List {
-                        Section {
-                            Text(viewModel.evaluateSummary(for: rules, isPaused: isPaused))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if Entitlements.maxRulesForCurrentTier != nil {
-                                Text("Free: 1 rule. Upgrade for unlimited.")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                            }
+                if rulesStore.rules.isEmpty {
+                    BoundaryScreen {
+                        VStack(spacing: BoundaryTheme.Spacing.xl) {
+                            SectionHeader(
+                                title: "Rules",
+                                subtitle: "Automate quiet time from your calendar and schedule."
+                            )
+                            EmptyRulesState(
+                                canAddRule: canAddRule,
+                                onAddRule: { presentBuilder(editing: nil) },
+                                onAddSample: { try? rulesStore.addSampleRule() }
+                            )
                         }
-                        ForEach(rules) { rule in
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    Text(rule.title)
-                                        .font(.headline)
-                                    Spacer()
-                                    StatusBadge(text: rule.isEnabled ? "On" : "Off", style: rule.isEnabled ? .active : .idle)
+                    }
+                } else {
+                    BoundaryScreen {
+                        VStack(alignment: .leading, spacing: BoundaryTheme.Spacing.lg) {
+                            SectionHeader(
+                                title: "Rules",
+                                subtitle: "Tap a rule’s menu to edit, or add a new one with the builder."
+                            )
+
+                            RuleListView(
+                                enabledRules: enabledRules,
+                                disabledRules: disabledRules,
+                                summaryText: viewModel.evaluateSummary(for: persisted, isPaused: appState.isPaused),
+                                showsEntitlementHint: showsEntitlementHint,
+                                runStateLine: { viewModel.runStateLine(for: $0, appState: appState) },
+                                onToggleEnabled: { rule, isOn in
+                                    try? rulesStore.setEnabled(ruleId: rule.id, isEnabled: isOn)
+                                },
+                                onEdit: { rule in
+                                    presentBuilder(editing: rule)
+                                },
+                                onDelete: { rule in
+                                    rulePendingDelete = rule
                                 }
-                                Text(triggerLabel(for: rule))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text("\(rule.preset.displayName) · \(rule.quietMode.displayName)")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
+                            )
+
+                            AddRuleButton(
+                                title: "Add rule",
+                                isEnabled: canAddRule
+                            ) {
+                                presentBuilder(editing: nil)
                             }
-                            .padding(.vertical, 4)
                         }
                     }
                 }
             }
             .navigationTitle("Rules")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        try? rulesStore.addSampleRule()
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Menu {
+                        Button("Add sample rule", systemImage: "square.stack.3d.up") {
+                            try? rulesStore.addSampleRule()
+                        }
+                        .disabled(!canAddRule)
                     } label: {
-                        Label("Add sample", systemImage: "plus")
+                        Image(systemName: "ellipsis.circle")
+                    }
+
+                    Button {
+                        presentBuilder(editing: nil)
+                    } label: {
+                        Label("Add rule", systemImage: "plus")
                     }
                     .disabled(!canAddRule)
+                }
+            }
+            .sheet(isPresented: $showRuleBuilder, onDismiss: { ruleBeingEdited = nil }) {
+                NavigationStack {
+                    RuleBuilderView(viewModel: RuleBuilderViewModel(editing: ruleBeingEdited))
+                        .environment(rulesStore)
+                }
+            }
+            .confirmationDialog(
+                "Delete rule?",
+                isPresented: Binding(
+                    get: { rulePendingDelete != nil },
+                    set: { if !$0 { rulePendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let rule = rulePendingDelete {
+                        try? rulesStore.deleteRule(id: rule.id)
+                    }
+                    rulePendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    rulePendingDelete = nil
+                }
+            } message: {
+                if let rule = rulePendingDelete {
+                    Text("“\(rule.name)” will be removed from this device.")
                 }
             }
         }
     }
 
-    private func triggerLabel(for rule: PersistedRule) -> String {
-        switch rule.trigger {
-        case .schedule: "Schedule trigger"
-        case .calendar: "Calendar trigger"
-        case .hybrid: "Hybrid trigger"
-        }
+    private func presentBuilder(editing rule: BoundaryRule?) {
+        ruleBeingEdited = rule
+        showRuleBuilder = true
     }
 }
 
 #Preview {
-    RulesView(viewModel: RulesViewModel(ruleEngine: RuleEngine()))
-        .environment(RulesStore())
+    let deps = BoundaryDependencies(calendarService: MockCalendarService())
+    RulesView(viewModel: RulesViewModel(ruleEngine: deps.services.ruleEngine))
+        .environment(deps.rulesStore)
+        .environment(deps.appState)
         .modelContainer(for: [PersistedRule.self, AppConfiguration.self], inMemory: true)
 }

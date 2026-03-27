@@ -2,7 +2,7 @@
 //  AppState.swift
 //  Boundary
 //
-//  PRD Section 6 — runtime boundary + last evaluation (onboarding/pause stay in SwiftData).
+//  Central runtime state: onboarding, pause, boundary evaluation, optional permission mirror.
 //
 
 import SwiftUI
@@ -16,6 +16,9 @@ final class AppState {
     /// Bound from `RootView` when configuration is available.
     var configuration: AppConfiguration?
 
+    /// Refreshed with `PermissionsManager` so shell UIs can read one place (optional mirror).
+    private(set) var calendarPermission: CalendarAuthorizationState = .notDetermined
+
     var currentBoundaryState: BoundaryState {
         lastEvaluation?.boundaryState ?? .inactive
     }
@@ -24,7 +27,19 @@ final class AppState {
         configuration?.hasCompletedOnboarding ?? false
     }
 
+    var isPaused: Bool {
+        configuration?.isPaused ?? false
+    }
+
     func applyEvaluation(_ result: RuleEvaluationResult) {
         lastEvaluation = result
+    }
+
+    func syncCalendarPermission(_ status: CalendarAuthorizationState) {
+        calendarPermission = status
+    }
+
+    func syncConfiguration(_ configuration: AppConfiguration?) {
+        self.configuration = configuration
     }
 }

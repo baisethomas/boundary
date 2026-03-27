@@ -19,15 +19,20 @@ struct PrimaryButton: View {
                     Text(title)
                 }
             }
+            .font(BoundaryTheme.Typography.headline)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, BoundaryTheme.Spacing.sm + 2)
         }
         .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.roundedRectangle(radius: BoundaryTheme.Radius.button))
         .controlSize(.large)
     }
 }
 
 #Preview {
-    PrimaryButton(title: "Continue", systemImage: "arrow.right") {}
-        .padding()
+    VStack(spacing: BoundaryTheme.Spacing.md) {
+        PrimaryButton(title: "Continue", systemImage: "arrow.right") {}
+        PrimaryButton(title: "Save") {}
+    }
+    .padding()
 }

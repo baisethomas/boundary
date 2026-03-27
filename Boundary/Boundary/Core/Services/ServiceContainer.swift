@@ -33,34 +33,4 @@ final class ServiceContainer {
         self.persistence = persistence
         self.evaluationCoordinator = evaluationCoordinator
     }
-
-    static let live: ServiceContainer = {
-        let calendar = CalendarService()
-        let engine = RuleEngine()
-        let coordinator = EvaluationCoordinator(ruleEngine: engine, calendarService: calendar)
-        return ServiceContainer(
-            calendarService: calendar,
-            ruleEngine: engine,
-            automationService: AutomationService(),
-            activityLogger: ActivityLogger(),
-            permissionsManager: PermissionsManager(),
-            persistence: SwiftDataPersistenceService.shared,
-            evaluationCoordinator: coordinator
-        )
-    }()
-
-    static let preview: ServiceContainer = {
-        let calendar = CalendarService()
-        let engine = RuleEngine()
-        let coordinator = EvaluationCoordinator(ruleEngine: engine, calendarService: calendar)
-        return ServiceContainer(
-            calendarService: calendar,
-            ruleEngine: engine,
-            automationService: AutomationService(),
-            activityLogger: ActivityLogger(),
-            permissionsManager: PermissionsManager(),
-            persistence: SwiftDataPersistenceService.shared,
-            evaluationCoordinator: coordinator
-        )
-    }()
 }

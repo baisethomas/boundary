@@ -8,36 +8,53 @@ import SwiftUI
 
 struct ActivityView: View {
     @Environment(ActivityStore.self) private var activityStore
-    @Query(sort: \ActivityEvent.occurredAt, order: .reverse) private var events: [ActivityEvent]
     @Bindable var viewModel: ActivityViewModel
 
-    private var groupedEvents: [(day: Date, items: [ActivityEvent])] {
-        let cal = Calendar.current
-        let byDay = Dictionary(grouping: events) { cal.startOfDay(for: $0.occurredAt) }
-        return byDay.keys.sorted(by: >).map { day in
-            let items = (byDay[day] ?? []).sorted { $0.occurredAt > $1.occurredAt }
-            return (day, items)
-        }
+    private var sections: [(day: Date, items: [ActivityItem])] {
+        viewModel.dayGroupedSections(from: activityStore.activities)
+    }
+
+    private var hasAnyActivity: Bool {
+        !activityStore.activities.isEmpty
+    }
+
+    private var hasVisibleActivity: Bool {
+        !sections.isEmpty
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if events.isEmpty {
-                    ContentUnavailableView(
-                        "No activity yet",
-                        systemImage: "clock.arrow.circlepath",
-                        description: Text("Boundary will log activations and overrides here.")
-                    )
+                if !hasAnyActivity {
+                    BoundaryScreen {
+                        VStack(spacing: BoundaryTheme.Spacing.xl) {
+                            SectionHeader(
+                                title: "Activity",
+                                subtitle: "A clear history of when Boundary runs — builds trust over time."
+                            )
+                            EmptyStateView(
+                                systemImage: "clock.arrow.circlepath",
+                                title: "No activity yet",
+                                message: "Activations, endings, skips, and manual overrides will appear here.",
+                                actionTitle: "Log sample",
+                                action: { viewModel.logSampleEvent(in: activityStore) }
+                            )
+                        }
+                    }
                 } else {
-                    List {
-                        ForEach(groupedEvents, id: \.day) { section in
-                            Section {
-                                ForEach(section.items) { event in
-                                    eventRow(event)
-                                }
-                            } header: {
-                                Text(section.day, format: .dateTime.month(.wide).day().year())
+                    BoundaryScreen {
+                        VStack(alignment: .leading, spacing: BoundaryTheme.Spacing.md) {
+                            SectionHeader(
+                                title: "Activity",
+                                subtitle: "Grouped by day. Filter to focus on one kind of event."
+                            )
+
+                            ActivityFilterBar(selection: $viewModel.filter)
+
+                            if hasVisibleActivity {
+                                ActivityTimelineList(sections: sections)
+                            } else {
+                                filteredEmptyState
                             }
                         }
                     }
@@ -56,37 +73,27 @@ struct ActivityView: View {
         }
     }
 
-    @ViewBuilder
-    private func eventRow(_ event: ActivityEvent) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(event.title)
-                    .font(.headline)
-                Spacer()
-                Text(event.kind.rawValue)
-                    .font(.caption2.weight(.semibold))
+    private var filteredEmptyState: some View {
+        BoundaryCard {
+            VStack(alignment: .leading, spacing: BoundaryTheme.Spacing.sm) {
+                Text("Nothing for this filter")
+                    .font(BoundaryTheme.Typography.headline)
+                Text("Try “All” or pick another category. Events stay in the log — they’re only hidden while filtering.")
+                    .font(BoundaryTheme.Typography.bodySecondary)
                     .foregroundStyle(.secondary)
+                Button("Show all activity") {
+                    viewModel.filter = .all
+                }
+                .font(BoundaryTheme.Typography.caption.weight(.semibold))
+                .padding(.top, BoundaryTheme.Spacing.xs)
             }
-            if !event.detail.isEmpty {
-                Text(event.detail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            if let ruleID = event.ruleID {
-                Text("Rule: \(ruleID.uuidString.prefix(8))…")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            Text(event.occurredAt, style: .time)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 4)
     }
 }
 
 #Preview {
-    ActivityView(viewModel: ActivityViewModel(activityLogger: ActivityLogger()))
-        .environment(ActivityStore())
+    let deps = BoundaryDependencies(calendarService: MockCalendarService())
+    ActivityView(viewModel: ActivityViewModel(activityLogger: deps.services.activityLogger))
+        .environment(deps.activityStore)
         .modelContainer(for: [ActivityEvent.self, AppConfiguration.self], inMemory: true)
 }

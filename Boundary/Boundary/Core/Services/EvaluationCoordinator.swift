@@ -29,7 +29,8 @@ final class EvaluationCoordinator {
             rules: rules,
             now: now,
             calendarEvents: events,
-            isGloballyPaused: paused
+            isGloballyPaused: paused,
+            calendar: Calendar.current
         )
         appState.applyEvaluation(result)
     }

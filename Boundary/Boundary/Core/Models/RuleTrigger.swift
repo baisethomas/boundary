@@ -2,32 +2,21 @@
 //  RuleTrigger.swift
 //  Boundary
 //
-//  PRD Sections 7–9 — schedule, calendar, hybrid triggers.
+//  PRD §7 — schedule, calendar, hybrid.
 //
 
 import Foundation
 
-struct ScheduleTrigger: Codable, Equatable, Sendable {
-    /// 1 = Sunday … 7 = Saturday (Gregorian `Calendar` weekday index).
-    var weekdayIndices: [Int]
-    var startMinutesFromMidnight: Int
-    var endMinutesFromMidnight: Int
-}
-
-struct CalendarTrigger: Codable, Equatable, Sendable {
-    var keywords: [String]
-}
-
-enum RuleTrigger: Equatable, Sendable {
+enum RuleTrigger: Equatable, Hashable, Sendable {
     case schedule(ScheduleTrigger)
     case calendar(CalendarTrigger)
     case hybrid(schedule: ScheduleTrigger, calendar: CalendarTrigger)
 
     static func defaultAfterHoursSchedule() -> ScheduleTrigger {
         ScheduleTrigger(
-            weekdayIndices: [2, 3, 4, 5, 6],
-            startMinutesFromMidnight: 18 * 60,
-            endMinutesFromMidnight: 8 * 60
+            weekdays: [.monday, .tuesday, .wednesday, .thursday, .friday],
+            start: SimpleTime(hour: 18),
+            end: SimpleTime(hour: 8)
         )
     }
 
@@ -35,7 +24,6 @@ enum RuleTrigger: Equatable, Sendable {
         CalendarTrigger(keywords: ["OOO", "Vacation", "Focus"])
     }
 
-    /// Default encoded payload for new rules (after-hours style schedule).
     static func defaultEncoded() -> Data {
         let trigger = RuleTrigger.schedule(defaultAfterHoursSchedule())
         return (try? JSONEncoder().encode(TriggerCodable(from: trigger))) ?? Data()
@@ -81,14 +69,14 @@ private struct TriggerCodable: Codable {
             kind = .schedule
             schedule = s
             calendar = nil
-        case let .calendar(c):
+        case let .calendar(cal):
             kind = .calendar
             schedule = nil
-            calendar = c
-        case let .hybrid(s, c):
+            calendar = cal
+        case let .hybrid(s, cal):
             kind = .hybrid
             schedule = s
-            calendar = c
+            calendar = cal
         }
     }
 

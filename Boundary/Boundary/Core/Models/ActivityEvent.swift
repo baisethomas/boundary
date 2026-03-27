@@ -2,7 +2,7 @@
 //  ActivityEvent.swift
 //  Boundary
 //
-//  PRD ActivityItem — types and optional rule reference.
+//  SwiftData row — mirrors `ActivityItem`.
 //
 
 import Foundation
@@ -15,7 +15,6 @@ final class ActivityEvent {
     var detail: String
     var occurredAt: Date
     var kindRaw: String
-    /// Optional link to the rule that caused this entry.
     var ruleID: UUID? = nil
 
     init(
@@ -23,26 +22,40 @@ final class ActivityEvent {
         title: String,
         detail: String = "",
         occurredAt: Date = .now,
-        kind: ActivityKind = .skipped,
+        activityType: ActivityType = .skipped,
         ruleID: UUID? = nil
     ) {
         self.id = id
         self.title = title
         self.detail = detail
         self.occurredAt = occurredAt
-        self.kindRaw = kind.rawValue
+        self.kindRaw = activityType.rawValue
         self.ruleID = ruleID
     }
 
-    var kind: ActivityKind {
-        get { ActivityKind(rawValue: kindRaw) ?? .skipped }
+    var activityType: ActivityType {
+        get { ActivityType(rawValue: kindRaw) ?? .skipped }
         set { kindRaw = newValue.rawValue }
     }
-}
 
-enum ActivityKind: String, Codable, CaseIterable {
-    case activated
-    case ended
-    case skipped
-    case override
+    var activityItem: ActivityItem {
+        get {
+            ActivityItem(
+                id: id,
+                timestamp: occurredAt,
+                type: activityType,
+                ruleID: ruleID,
+                title: title,
+                detail: detail
+            )
+        }
+        set {
+            id = newValue.id
+            occurredAt = newValue.timestamp
+            activityType = newValue.type
+            ruleID = newValue.ruleID
+            title = newValue.title
+            detail = newValue.detail
+        }
+    }
 }

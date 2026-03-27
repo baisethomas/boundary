@@ -22,7 +22,7 @@ enum PreviewSampleData {
         }
         if (try? container.fetchCount(FetchDescriptor<ActivityEvent>())) == 0 {
             container.insert(
-                ActivityEvent(title: "Boundary armed", detail: "Mock event", kind: .activated)
+                ActivityEvent(title: "Boundary armed", detail: "Mock event", activityType: .activated)
             )
         }
         try? container.save()

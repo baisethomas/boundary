@@ -6,7 +6,8 @@
 import SwiftUI
 
 extension View {
+    /// Horizontal inset aligned with `BoundaryScreen` and `BoundaryTheme.Spacing.screenHorizontal`.
     func boundaryScreenPadding() -> some View {
-        padding(.horizontal, 20)
+        padding(.horizontal, BoundaryTheme.Spacing.screenHorizontal)
     }
 }

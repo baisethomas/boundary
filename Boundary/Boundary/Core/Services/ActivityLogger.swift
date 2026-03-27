@@ -9,7 +9,7 @@ protocol ActivityLogging: AnyObject {
     func record(
         title: String,
         detail: String,
-        kind: ActivityKind,
+        activityType: ActivityType,
         ruleID: UUID?,
         at date: Date,
         in store: ActivityStore
@@ -21,11 +21,11 @@ final class ActivityLogger: ActivityLogging {
     func record(
         title: String,
         detail: String,
-        kind: ActivityKind,
+        activityType: ActivityType,
         ruleID: UUID? = nil,
         at date: Date = .now,
         in store: ActivityStore
     ) {
-        try? store.append(title: title, detail: detail, kind: kind, ruleID: ruleID, at: date)
+        try? store.append(title: title, detail: detail, activityType: activityType, ruleID: ruleID, at: date)
     }
 }

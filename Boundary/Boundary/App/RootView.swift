@@ -9,18 +9,16 @@ import SwiftUI
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(AppState.self) private var appState
+    @Environment(RulesStore.self) private var rulesStore
+    @Environment(ActivityStore.self) private var activityStore
+    @Environment(PermissionsManager.self) private var permissionsManager
     @Environment(ServiceContainer.self) private var services
 
     @Query(filter: #Predicate<AppConfiguration> { $0.id == "app.configuration.singleton" })
     private var configurations: [AppConfiguration]
 
-    @Query(sort: \PersistedRule.createdAt, order: .reverse)
-    private var allRules: [PersistedRule]
-
     @State private var router = AppRouter()
-    @State private var appState = AppState()
-    @State private var rulesStore = RulesStore()
-    @State private var activityStore = ActivityStore()
 
     private var configuration: AppConfiguration? { configurations.first }
 
@@ -30,15 +28,9 @@ struct RootView: View {
                 if configuration.hasCompletedOnboarding {
                     MainTabView()
                         .environment(router)
-                        .environment(appState)
-                        .environment(rulesStore)
-                        .environment(activityStore)
                 } else {
                     OnboardingView(
-                        viewModel: OnboardingViewModel(
-                            configuration: configuration,
-                            permissionsManager: services.permissionsManager
-                        )
+                        viewModel: OnboardingViewModel(configuration: configuration)
                     )
                 }
             } else {
@@ -50,19 +42,26 @@ struct RootView: View {
             bindStoresAndSyncState()
         }
         .onChange(of: configurations.count) { _, _ in
-            appState.configuration = configuration
+            appState.syncConfiguration(configuration)
+        }
+        .onChange(of: configurations.first?.hasCompletedOnboarding) { _, _ in
+            appState.syncConfiguration(configuration)
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, configuration?.hasCompletedOnboarding == true else { return }
             Task { await runForegroundEvaluation() }
         }
-        .onChange(of: allRules.count) { _, _ in
+        .onChange(of: rulesStore.rules.count) { _, _ in
             guard configuration?.hasCompletedOnboarding == true else { return }
             Task { await runForegroundEvaluation() }
         }
         .onChange(of: configurations.first?.isPaused) { _, _ in
             guard configuration?.hasCompletedOnboarding == true else { return }
             Task { await runForegroundEvaluation() }
+        }
+        .task {
+            await permissionsManager.refreshStatus()
+            appState.syncCalendarPermission(permissionsManager.permissionStatus.calendar)
         }
     }
 
@@ -75,13 +74,14 @@ struct RootView: View {
     private func bindStoresAndSyncState() {
         rulesStore.bind(modelContext)
         activityStore.bind(modelContext)
-        appState.configuration = configuration
+        appState.syncConfiguration(configuration)
     }
 
     @MainActor
     private func runForegroundEvaluation() async {
+        let persisted = (try? rulesStore.persistedRules()) ?? []
         await services.evaluationCoordinator.evaluateForeground(
-            rules: allRules,
+            rules: persisted,
             appState: appState,
             configuration: configuration
         )
@@ -89,7 +89,12 @@ struct RootView: View {
 }
 
 #Preview {
-    RootView()
+    let deps = BoundaryDependencies(calendarService: MockCalendarService())
+    return RootView()
         .modelContainer(for: [AppConfiguration.self, PersistedRule.self, ActivityEvent.self], inMemory: true)
-        .environment(ServiceContainer.preview)
+        .environment(deps.appState)
+        .environment(deps.rulesStore)
+        .environment(deps.activityStore)
+        .environment(deps.permissionsManager)
+        .environment(deps.services)
 }

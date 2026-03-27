@@ -2,7 +2,7 @@
 //  PersistedRule.swift
 //  Boundary
 //
-//  PRD BoundaryRule — persisted shape; `title` is the user-facing name.
+//  SwiftData model — maps to domain `BoundaryRule` for encoding and UI.
 //
 
 import Foundation
@@ -17,9 +17,10 @@ final class PersistedRule {
     var createdAt: Date
     var notes: String
 
-    /// JSON-encoded `RuleTrigger` (schedule / calendar / hybrid).
+    /// JSON-encoded `RuleTrigger`.
     var triggerData: Data = RuleTrigger.defaultEncoded()
-    var quietModeRaw: String = QuietMode.doNotDisturb.rawValue
+    /// JSON-encoded `QuietModeProfile`.
+    var quietProfileData: Data = QuietModeProfile.defaultEncoded
     var restoreBehaviorRaw: String = RestoreBehavior.revertPrevious.rawValue
 
     init(
@@ -30,7 +31,7 @@ final class PersistedRule {
         createdAt: Date = .now,
         notes: String = "",
         trigger: RuleTrigger? = nil,
-        quietMode: QuietMode? = nil,
+        quietProfile: QuietModeProfile? = nil,
         restoreBehavior: RestoreBehavior? = nil
     ) {
         self.id = id
@@ -41,7 +42,8 @@ final class PersistedRule {
         self.notes = notes
         let resolvedTrigger = trigger ?? QuietPreset.defaultTrigger(for: preset)
         self.triggerData = (try? JSONEncoder().encode(resolvedTrigger)) ?? RuleTrigger.defaultEncoded()
-        self.quietModeRaw = (quietMode ?? preset.defaultQuietMode).rawValue
+        let profile = quietProfile ?? preset.defaultQuietProfile
+        self.quietProfileData = (try? JSONEncoder().encode(profile)) ?? QuietModeProfile.defaultEncoded
         self.restoreBehaviorRaw = (restoreBehavior ?? preset.defaultRestoreBehavior).rawValue
     }
 
@@ -64,13 +66,47 @@ final class PersistedRule {
         }
     }
 
-    var quietMode: QuietMode {
-        get { QuietMode(rawValue: quietModeRaw) ?? .doNotDisturb }
-        set { quietModeRaw = newValue.rawValue }
+    var quietProfile: QuietModeProfile {
+        get {
+            guard !quietProfileData.isEmpty,
+                  let decoded = try? JSONDecoder().decode(QuietModeProfile.self, from: quietProfileData)
+            else {
+                return QuietModeProfile.baseline(for: .doNotDisturb)
+            }
+            return decoded
+        }
+        set {
+            quietProfileData = (try? JSONEncoder().encode(newValue)) ?? QuietModeProfile.defaultEncoded
+        }
     }
 
     var restoreBehavior: RestoreBehavior {
         get { RestoreBehavior(rawValue: restoreBehaviorRaw) ?? .revertPrevious }
         set { restoreBehaviorRaw = newValue.rawValue }
+    }
+
+    var boundaryRule: BoundaryRule {
+        get {
+            BoundaryRule(
+                id: id,
+                name: title,
+                isEnabled: isEnabled,
+                trigger: trigger,
+                quietMode: quietProfile,
+                restoreBehavior: restoreBehavior,
+                createdAt: createdAt,
+                notes: notes
+            )
+        }
+        set {
+            id = newValue.id
+            title = newValue.name
+            isEnabled = newValue.isEnabled
+            trigger = newValue.trigger
+            quietProfile = newValue.quietMode
+            restoreBehavior = newValue.restoreBehavior
+            createdAt = newValue.createdAt
+            notes = newValue.notes
+        }
     }
 }

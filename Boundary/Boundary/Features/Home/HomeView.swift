@@ -8,89 +8,204 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppState.self) private var appState
+    @Environment(RulesStore.self) private var rulesStore
+    @Environment(ActivityStore.self) private var activityStore
+    @Environment(ServiceContainer.self) private var services
+    @Environment(AppRouter.self) private var router
+    @Environment(\.modelContext) private var modelContext
+
+    @Query(filter: #Predicate<AppConfiguration> { $0.id == "app.configuration.singleton" })
+    private var configurations: [AppConfiguration]
 
     @Bindable var viewModel: HomeViewModel
 
+    private var configuration: AppConfiguration? { configurations.first }
+
+    private var ruleRows: [BoundaryRule] {
+        Array(rulesStore.rules.prefix(4))
+    }
+
+    private var activeQuietModeName: String? {
+        guard let evaluation = appState.lastEvaluation else { return nil }
+        switch evaluation.boundaryState {
+        case let .active(ruleId):
+            return rulesStore.rules.first(where: { $0.id == ruleId })?.quietMode.displayName
+        case .inactive, .paused:
+            return nil
+        }
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    SectionHeader(title: "Now", subtitle: "Boundary state from rule engine")
+            ZStack(alignment: .bottom) {
+                BoundaryScreen {
+                    VStack(alignment: .leading, spacing: BoundaryTheme.Spacing.lg) {
+                        SectionHeader(
+                            title: "Dashboard",
+                            subtitle: "Current state, what’s next, and shortcuts."
+                        )
 
-                    BoundaryCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text(headlineTitle)
-                                    .font(.title2.weight(.bold))
-                                Spacer()
-                                StatusBadge(
-                                    text: statusBadgeText,
-                                    style: statusBadgeStyle
-                                )
-                            }
-                            Text(appState.lastEvaluation?.reason ?? "Not evaluated yet")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                        CurrentStateHeroCard(
+                            headline: viewModel.heroHeadline(appState: appState),
+                            modeLabel: viewModel.modeLabel(appState: appState),
+                            badgeStyle: viewModel.modeBadgeStyle(appState: appState),
+                            reason: viewModel.reasonLine(appState: appState),
+                            endsSummary: viewModel.endsSummary(appState: appState),
+                            quietModeName: activeQuietModeName
+                        )
 
-                    BoundaryCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Next boundary")
-                                .font(.headline)
-                            Text(appState.lastEvaluation?.nextBoundarySummary ?? "—")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                        NextBoundaryCard(
+                            summary: viewModel.nextBoundarySummary(appState: appState),
+                            detail: viewModel.nextBoundaryDetail(appState: appState),
+                            nextDate: appState.lastEvaluation?.nextTriggerDate
+                        )
 
-                    BoundaryCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Calendar")
-                                .font(.headline)
-                            Text("Access: \(viewModel.calendarState.rawValue) (EventKit placeholder)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                        QuickActionBar(
+                            isGloballyPaused: appState.isPaused,
+                            isBusy: viewModel.isRefreshing,
+                            onPause: { setGlobalPaused(true) },
+                            onResume: { setGlobalPaused(false) },
+                            onRunTest: { runTestEvaluation() },
+                            onCreateRule: { router.selectedTab = .rules }
+                        )
+
+                        calendarStatusCard
+
+                        rulesSnapshotSection
+
+                        RecentActivityPreview(items: activityStore.activities) {
+                            router.selectedTab = .activity
                         }
                     }
                 }
-                .boundaryScreenPadding()
-                .padding(.vertical, 16)
+                .navigationTitle("Home")
+                .task {
+                    await viewModel.loadCalendarState()
+                    appState.syncCalendarPermission(viewModel.calendarState)
+                }
+
+                if let toast = viewModel.toast {
+                    Text(toast)
+                        .font(BoundaryTheme.Typography.caption)
+                        .padding(.horizontal, BoundaryTheme.Spacing.md)
+                        .padding(.vertical, BoundaryTheme.Spacing.sm)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .padding(.bottom, BoundaryTheme.Spacing.lg)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .animation(.spring(duration: 0.35), value: viewModel.toast)
+                }
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Home")
-            .task {
-                await viewModel.loadCalendarState()
+        }
+    }
+
+    @ViewBuilder
+    private var calendarStatusCard: some View {
+        BoundaryCard {
+            HStack(spacing: BoundaryTheme.Spacing.md) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, alignment: .center)
+                VStack(alignment: .leading, spacing: BoundaryTheme.Spacing.xxs) {
+                    Text("Calendar access")
+                        .font(BoundaryTheme.Typography.headline)
+                    Text(statusLine(for: appState.calendarPermission))
+                        .font(BoundaryTheme.Typography.bodySecondary)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
             }
         }
     }
 
-    private var headlineTitle: String {
-        if appState.currentBoundaryState == .paused {
-            return "Paused"
+    @ViewBuilder
+    private var rulesSnapshotSection: some View {
+        VStack(alignment: .leading, spacing: BoundaryTheme.Spacing.sm) {
+            Text("Your rules")
+                .font(BoundaryTheme.Typography.captionSmall)
+                .foregroundStyle(.tertiary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            if rulesStore.rules.isEmpty {
+                BoundaryCard {
+                    Text("No rules yet. Create one to see it here.")
+                        .font(BoundaryTheme.Typography.bodySecondary)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                BoundaryCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(ruleRows.enumerated()), id: \.element.id) { index, rule in
+                            RuleSnapshotRow(
+                                rule: rule,
+                                showsDividerBelow: index < ruleRows.count - 1
+                            )
+                        }
+                        if rulesStore.rules.count > ruleRows.count {
+                            Text("+ \(rulesStore.rules.count - ruleRows.count) more in Rules")
+                                .font(BoundaryTheme.Typography.captionSmall)
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, BoundaryTheme.Spacing.xs)
+                        }
+                    }
+                }
+            }
         }
-        return appState.lastEvaluation?.activeRuleTitle ?? "No active boundary"
     }
 
-    private var statusBadgeText: String {
-        switch appState.currentBoundaryState {
-        case .paused: "Paused"
-        case .inactive: "Off"
-        case .active: "Quiet"
+    private func statusLine(for state: CalendarAuthorizationState) -> String {
+        switch state {
+        case .authorized:
+            return "Granted — calendar-aware rules can run."
+        case .denied, .restricted:
+            return "Limited — open Settings to allow Calendar when you’re ready."
+        case .notDetermined:
+            return "Not requested yet — onboarding or Settings can enable access."
+        case .mock:
+            return "Preview mock — production uses your real calendar permission state."
         }
     }
 
-    private var statusBadgeStyle: StatusBadge.Style {
-        switch appState.currentBoundaryState {
-        case .active: .active
-        case .inactive: .idle
-        case .paused: .pending
+    private func setGlobalPaused(_ paused: Bool) {
+        guard let config = configuration else { return }
+        config.isPaused = paused
+        try? modelContext.save()
+        Task {
+            let rules = (try? rulesStore.persistedRules()) ?? []
+            await viewModel.runForegroundEvaluation(
+                appState: appState,
+                configuration: config,
+                rules: rules
+            )
+        }
+    }
+
+    private func runTestEvaluation() {
+        Task {
+            let rules = (try? rulesStore.persistedRules()) ?? []
+            await viewModel.runForegroundEvaluation(
+                appState: appState,
+                configuration: configuration,
+                rules: rules
+            )
+            await viewModel.showToast("Boundary refreshed")
         }
     }
 }
 
 #Preview {
-    HomeView(viewModel: HomeViewModel(calendarService: CalendarService()))
-        .environment(AppState())
-        .modelContainer(for: [PersistedRule.self, ActivityEvent.self, AppConfiguration.self], inMemory: true)
+    let deps = BoundaryDependencies(calendarService: MockCalendarService())
+    HomeView(
+        viewModel: HomeViewModel(
+            calendarService: deps.services.calendarService,
+            evaluationCoordinator: deps.services.evaluationCoordinator
+        )
+    )
+    .environment(deps.appState)
+    .environment(deps.rulesStore)
+    .environment(deps.activityStore)
+    .environment(deps.services)
+    .environment(AppRouter())
+    .modelContainer(for: [PersistedRule.self, ActivityEvent.self, AppConfiguration.self], inMemory: true)
 }

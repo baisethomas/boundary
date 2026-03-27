@@ -5,8 +5,8 @@
 
 import Foundation
 
-/// PRD Section 11 — when a rule ends.
-enum RestoreBehavior: String, Codable, CaseIterable, Identifiable {
+/// PRD §11 — when a rule ends.
+enum RestoreBehavior: String, Codable, CaseIterable, Identifiable, Hashable, Sendable {
     case revertPrevious
     case `default`
     case maintain

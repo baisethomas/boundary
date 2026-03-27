@@ -18,7 +18,10 @@ struct MainTabView: View {
             )
         ) {
             HomeView(
-                viewModel: HomeViewModel(calendarService: services.calendarService)
+                viewModel: HomeViewModel(
+                    calendarService: services.calendarService,
+                    evaluationCoordinator: services.evaluationCoordinator
+                )
             )
             .tabItem { Label(AppTab.home.title, systemImage: AppTab.home.systemImage) }
             .tag(AppTab.home)
@@ -36,7 +39,7 @@ struct MainTabView: View {
             .tag(AppTab.activity)
 
             SettingsView(
-                viewModel: SettingsViewModel(permissionsManager: services.permissionsManager)
+                viewModel: SettingsViewModel()
             )
             .tabItem { Label(AppTab.settings.title, systemImage: AppTab.settings.systemImage) }
             .tag(AppTab.settings)
@@ -45,11 +48,13 @@ struct MainTabView: View {
 }
 
 #Preview {
+    let deps = BoundaryDependencies(calendarService: MockCalendarService())
     MainTabView()
         .environment(AppRouter())
-        .environment(AppState())
-        .environment(RulesStore())
-        .environment(ActivityStore())
-        .environment(ServiceContainer.preview)
+        .environment(deps.appState)
+        .environment(deps.rulesStore)
+        .environment(deps.activityStore)
+        .environment(deps.permissionsManager)
+        .environment(deps.services)
         .modelContainer(for: [AppConfiguration.self, PersistedRule.self, ActivityEvent.self], inMemory: true)
 }

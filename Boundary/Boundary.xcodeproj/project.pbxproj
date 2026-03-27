@@ -400,6 +400,7 @@
 				DEVELOPMENT_TEAM = 6G6W9N2YC6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Boundary reads calendar events on device to match quiet-time rules to your schedule. Nothing is uploaded.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Boundary uses your calendar to align quiet time with meetings and out-of-office blocks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -433,6 +434,7 @@
 				DEVELOPMENT_TEAM = 6G6W9N2YC6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Boundary reads calendar events on device to match quiet-time rules to your schedule. Nothing is uploaded.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Boundary uses your calendar to align quiet time with meetings and out-of-office blocks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
