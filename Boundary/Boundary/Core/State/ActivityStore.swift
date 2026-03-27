@@ -19,6 +19,7 @@ final class ActivityStore {
 
     func bind(_ context: ModelContext) {
         modelContext = context
+        activities = []
         try? refreshFromPersistence()
     }
 
@@ -32,7 +33,7 @@ final class ActivityStore {
     func refreshFromPersistence() throws {
         guard modelContext != nil else { return }
         let context = requireContext()
-        var descriptor = FetchDescriptor<ActivityEvent>(sortBy: [SortDescriptor(\.occurredAt, order: .reverse)])
+        let descriptor = FetchDescriptor<ActivityEvent>(sortBy: [SortDescriptor(\.occurredAt, order: .reverse)])
         let rows = try context.fetch(descriptor)
         activities = rows.map(\.activityItem)
     }

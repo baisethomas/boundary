@@ -95,5 +95,5 @@ struct ActivityView: View {
     let deps = BoundaryDependencies(calendarService: MockCalendarService())
     ActivityView(viewModel: ActivityViewModel(activityLogger: deps.services.activityLogger))
         .environment(deps.activityStore)
-        .modelContainer(for: [ActivityEvent.self, AppConfiguration.self], inMemory: true)
+        .modelContainer(PreviewPersistence.inMemoryContainer())
 }

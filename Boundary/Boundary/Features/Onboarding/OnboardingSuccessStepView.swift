@@ -58,6 +58,6 @@ struct OnboardingSuccessStepView: View {
             OnboardingSuccessStepView(viewModel: vm)
                 .environment(deps.rulesStore)
         }
-        .modelContainer(for: [AppConfiguration.self, PersistedRule.self], inMemory: true)
+        .modelContainer(PreviewPersistence.inMemoryContainer())
     }
 }

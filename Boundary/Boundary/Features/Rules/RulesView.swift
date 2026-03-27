@@ -160,5 +160,5 @@ struct RulesView: View {
         .environment(deps.appState)
         .environment(deps.activityStore)
         .environment(deps.services)
-        .modelContainer(for: [PersistedRule.self, AppConfiguration.self], inMemory: true)
+        .modelContainer(PreviewPersistence.inMemoryContainer())
 }

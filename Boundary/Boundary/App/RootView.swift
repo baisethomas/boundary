@@ -48,6 +48,9 @@ struct RootView: View {
             appState.syncConfiguration(configuration)
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .inactive || phase == .background {
+                try? modelContext.save()
+            }
             guard phase == .active, configuration?.hasCompletedOnboarding == true else { return }
             Task { await runForegroundEvaluation() }
         }
@@ -93,7 +96,7 @@ struct RootView: View {
 #Preview {
     let deps = BoundaryDependencies(calendarService: MockCalendarService())
     return RootView()
-        .modelContainer(for: [AppConfiguration.self, PersistedRule.self, ActivityEvent.self], inMemory: true)
+        .modelContainer(PreviewPersistence.inMemoryContainer())
         .environment(deps.appState)
         .environment(deps.rulesStore)
         .environment(deps.activityStore)

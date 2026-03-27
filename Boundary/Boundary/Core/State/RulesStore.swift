@@ -39,6 +39,7 @@ final class RulesStore {
 
     func bind(_ context: ModelContext) {
         modelContext = context
+        rules = []
         try? refreshFromPersistence()
     }
 
@@ -54,7 +55,7 @@ final class RulesStore {
         guard let modelContext else {
             return []
         }
-        var descriptor = FetchDescriptor<PersistedRule>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        let descriptor = FetchDescriptor<PersistedRule>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
         return try modelContext.fetch(descriptor)
     }
 

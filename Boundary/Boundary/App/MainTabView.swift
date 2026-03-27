@@ -56,5 +56,5 @@ struct MainTabView: View {
         .environment(deps.activityStore)
         .environment(deps.permissionsManager)
         .environment(deps.services)
-        .modelContainer(for: [AppConfiguration.self, PersistedRule.self, ActivityEvent.self], inMemory: true)
+        .modelContainer(PreviewPersistence.inMemoryContainer())
 }

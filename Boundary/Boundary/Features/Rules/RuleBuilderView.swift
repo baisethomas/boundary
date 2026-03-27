@@ -204,7 +204,7 @@ struct RuleBuilderView: View {
     NavigationStack {
         RuleBuilderPreviewHost()
     }
-    .modelContainer(for: PersistedRule.self, inMemory: true)
+    .modelContainer(PreviewPersistence.inMemoryContainer())
 }
 
 private struct RuleBuilderPreviewHost: View {

@@ -2,7 +2,8 @@
 //  PersistenceService.swift
 //  Boundary
 //
-//  PRD Section 6 — persistence bootstrap and save helpers.
+//  App entry uses `BoundaryPersistence` for disk URL + schema; this service handles
+//  bootstrap helpers (singleton config) and explicit saves. All user data is SwiftData-only.
 //
 
 import SwiftData
@@ -17,21 +18,22 @@ protocol PersistenceServicing: AnyObject {
 final class SwiftDataPersistenceService: PersistenceServicing {
     static let shared = SwiftDataPersistenceService()
 
+    /// Single shared on-disk container for the app process (see `BoundaryApp` init).
     static func makeModelContainer() -> ModelContainer {
-        let schema = Schema([
-            AppConfiguration.self,
-            PersistedRule.self,
-            ActivityEvent.self,
-        ])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
-            return try ModelContainer(for: schema, configurations: [configuration])
+            return try BoundaryPersistence.makePersistentContainer()
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            fatalError("Boundary could not open local store: \(error)")
         }
     }
 
+    /// Tests and tools that must not touch the real database file.
+    static func makeInMemoryModelContainer() throws -> ModelContainer {
+        try BoundaryPersistence.makeInMemoryContainer()
+    }
+
     func ensureSingletonConfiguration(in context: ModelContext) {
+        // Must match `AppConfiguration.singletonID` (string literal required for #Predicate).
         var descriptor = FetchDescriptor<AppConfiguration>(
             predicate: #Predicate<AppConfiguration> { $0.id == "app.configuration.singleton" }
         )

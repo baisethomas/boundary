@@ -191,8 +191,7 @@ struct SettingsView: View {
 }
 
 #Preview {
-    let schema = Schema([AppConfiguration.self, PersistedRule.self, ActivityEvent.self])
-    let container = try! ModelContainer(for: schema, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let container = PreviewPersistence.inMemoryContainer()
     PreviewSampleData.configure(container.mainContext)
     let deps = BoundaryDependencies(calendarService: MockCalendarService())
     return SettingsView(viewModel: SettingsViewModel())

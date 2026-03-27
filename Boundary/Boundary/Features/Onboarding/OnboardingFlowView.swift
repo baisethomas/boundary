@@ -61,5 +61,5 @@ struct OnboardingFlowView: View {
         .environment(deps.permissionsManager)
         .environment(deps.services)
         .environment(deps.rulesStore)
-        .modelContainer(for: [AppConfiguration.self, PersistedRule.self, ActivityEvent.self], inMemory: true)
+        .modelContainer(PreviewPersistence.inMemoryContainer())
 }

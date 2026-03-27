@@ -8,7 +8,13 @@ import SwiftUI
 
 @main
 struct BoundaryApp: App {
+    /// One container for the lifetime of the process — avoids recreating the store on each body evaluation.
+    private let modelContainer: ModelContainer
     @State private var dependencies = BoundaryDependencies()
+
+    init() {
+        modelContainer = SwiftDataPersistenceService.makeModelContainer()
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -19,6 +25,6 @@ struct BoundaryApp: App {
                 .environment(dependencies.permissionsManager)
                 .environment(dependencies.services)
         }
-        .modelContainer(SwiftDataPersistenceService.makeModelContainer())
+        .modelContainer(modelContainer)
     }
 }

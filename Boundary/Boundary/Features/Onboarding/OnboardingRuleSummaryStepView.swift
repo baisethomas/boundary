@@ -79,6 +79,6 @@ struct OnboardingRuleSummaryStepView: View {
             OnboardingRuleSummaryStepView(viewModel: vm)
                 .environment(deps.rulesStore)
         }
-        .modelContainer(for: [AppConfiguration.self, PersistedRule.self], inMemory: true)
+        .modelContainer(PreviewPersistence.inMemoryContainer())
     }
 }

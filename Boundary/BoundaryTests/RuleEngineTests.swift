@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import SwiftData
 import Testing
 @testable import Boundary
 
@@ -12,13 +11,8 @@ import Testing
     private let engine = RuleEngine()
     private let utc = RuleEngineSampleScenarios.utcCalendar
 
-    @Test @MainActor func afterHours_activeWeeknightEvening() throws {
-        let container = try ModelContainer(
-            for: PersistedRule.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+    @Test @MainActor func afterHours_activeWeeknightEvening() {
         let rule = PersistedRule(title: "After Hours", preset: .afterHours)
-        container.mainContext.insert(rule)
 
         let now = RuleEngineSampleScenarios.afterHoursActiveWednesdayEvening
         let result = engine.evaluate(
@@ -34,13 +28,8 @@ import Testing
         #expect(result.nextBoundarySummary == nil)
     }
 
-    @Test @MainActor func afterHours_inactiveWeekdayAfternoon() throws {
-        let container = try ModelContainer(
-            for: PersistedRule.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+    @Test @MainActor func afterHours_inactiveWeekdayAfternoon() {
         let rule = PersistedRule(title: "After Hours", preset: .afterHours)
-        container.mainContext.insert(rule)
 
         let now = RuleEngineSampleScenarios.afterHoursInactiveWednesdayAfternoon
         let result = engine.evaluate(
@@ -55,13 +44,8 @@ import Testing
         #expect(result.nextTriggerDate != nil)
     }
 
-    @Test @MainActor func outOfOffice_activeWhenCalendarMatches() throws {
-        let container = try ModelContainer(
-            for: PersistedRule.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+    @Test @MainActor func outOfOffice_activeWhenCalendarMatches() {
         let rule = PersistedRule(title: "OOO", preset: .outOfOffice)
-        container.mainContext.insert(rule)
 
         let now = RuleEngineSampleScenarios.outOfOfficeNow
         let start = utc.date(byAdding: .hour, value: -1, to: now)!
@@ -79,13 +63,8 @@ import Testing
         #expect(result.boundaryState == .active(ruleId: rule.id))
     }
 
-    @Test @MainActor func deepWork_hybridRequiresScheduleAndEvent() throws {
-        let container = try ModelContainer(
-            for: PersistedRule.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+    @Test @MainActor func deepWork_hybridRequiresScheduleAndEvent() {
         let rule = PersistedRule(title: "Deep Work", preset: .deepWork)
-        container.mainContext.insert(rule)
 
         let now = RuleEngineSampleScenarios.deepWorkWednesdayDuringWorkHours
         let start = utc.date(byAdding: .hour, value: -1, to: now)!
@@ -111,11 +90,7 @@ import Testing
         #expect(noEvent.boundaryState == .inactive)
     }
 
-    @Test @MainActor func calendarRuleWinsOverScheduleWhenBothMatch() throws {
-        let container = try ModelContainer(
-            for: PersistedRule.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+    @Test @MainActor func calendarRuleWinsOverScheduleWhenBothMatch() {
         let older = Date(timeIntervalSince1970: 100)
         let newer = Date(timeIntervalSince1970: 200)
 
@@ -129,8 +104,6 @@ import Testing
             preset: .afterHours,
             createdAt: newer
         )
-        container.mainContext.insert(ooo)
-        container.mainContext.insert(afterHours)
 
         // Evening: after-hours schedule is active and OOO calendar event overlaps.
         let now = RuleEngineSampleScenarios.afterHoursActiveWednesdayEvening
@@ -150,13 +123,8 @@ import Testing
         #expect(result.activeRuleTitle == "Out of Office")
     }
 
-    @Test @MainActor func pausedShortCircuits() throws {
-        let container = try ModelContainer(
-            for: PersistedRule.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
+    @Test @MainActor func pausedShortCircuits() {
         let rule = PersistedRule(title: "After Hours", preset: .afterHours)
-        container.mainContext.insert(rule)
 
         let now = RuleEngineSampleScenarios.afterHoursActiveWednesdayEvening
         let result = engine.evaluate(

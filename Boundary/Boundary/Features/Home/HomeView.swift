@@ -202,5 +202,5 @@ struct HomeView: View {
     .environment(deps.activityStore)
     .environment(deps.services)
     .environment(AppRouter())
-    .modelContainer(for: [PersistedRule.self, ActivityEvent.self, AppConfiguration.self], inMemory: true)
+    .modelContainer(PreviewPersistence.inMemoryContainer())
 }
